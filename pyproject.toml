@@ -1,6 +1,6 @@
 [project]
 name = "ytdlp-api"
-version = "0.2.3"
+version = "0.2.4"
 description = "REST API backend for yt-dlp video downloads and metadata extraction"
 authors = [
     {name = "Francesco Vadicamo"}
@@ -10,11 +10,11 @@ requires-python = ">=3.11"
 license = {text = "MIT"}
 # Keep in sync with requirements.txt (canonical source used by Docker and CI)
 dependencies = [
-    "fastapi==0.125.0",
+    "fastapi==0.139.2",
     "uvicorn[standard]==0.51.0",
     "pydantic==2.13.4",
     "pydantic-settings==2.14.2",
-    "structlog==25.5.0",
+    "structlog==26.1.0",
     "prometheus-client==0.23.1",
     "psutil==7.2.2",
     "pyyaml==6.0.3",
@@ -33,17 +33,17 @@ dev = [
     "black==26.5.1",
     "isort==5.13.2",
     # Linting
-    "flake8==7.0.0",
-    "flake8-bugbear==24.1.17",
+    "flake8==7.3.0",
+    "flake8-bugbear==25.11.29",
     "flake8-comprehensions==3.17.0",
     "flake8-simplify==0.22.0",
     "flake8-docstrings==1.7.0",
     "pep8-naming==0.15.1",
     # Type checking
-    "mypy==1.19.1",
-    "types-PyYAML==6.0.12.12",
+    "mypy==2.3.0",
+    "types-PyYAML==6.0.12.20260518",
     "types-cachetools==6.2.0.20251022",
-    "types-psutil==6.1.0.20241221",
+    "types-psutil==7.2.2.20260518",
     # Security
     "bandit==1.9.4",
     # Pre-commit
@@ -184,6 +184,9 @@ max-complexity = 10
 
 [tool.mypy]
 python_version = "3.11"
+# `make type-check` runs `mypy .`, which would otherwise descend into the
+# local virtualenv the contributor guide tells you to create in-tree.
+exclude = ["^\\.?venv/"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
