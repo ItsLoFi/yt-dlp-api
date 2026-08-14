@@ -98,7 +98,7 @@ async def _run_binary_check(
         )
 
 
-async def check_ytdlp(timeout: float = 5.0) -> CheckResult:
+async def check_ytdlp(timeout: float = 15.0) -> CheckResult:
     """Check yt-dlp availability and version.
 
     Args:
