@@ -5,9 +5,11 @@ This module implements requirement 15: Job Status Tracking.
 """
 
 from typing import Any
+from pathlib import Path
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse
 
 from app.api.schemas import JobStatusResponse
 from app.middleware.auth import require_api_key
@@ -107,3 +109,75 @@ async def get_job_status(
     )
 
     return response
+
+
+@router.get(
+    "/jobs/{job_id}/file",
+    dependencies=[Depends(require_api_key)],
+    responses={
+        404: {"description": "Job or file not found"},
+        409: {"description": "Job is not completed"},
+        500: {"description": "Server error"},
+    },
+)
+async def download_job_file(
+    job_id: str,
+    job_service: JobService = Depends(get_job_service),  # noqa: B008
+) -> Any:
+    """
+    Download the file produced by a completed job.
+    """
+
+    logger.debug("job_file_requested", job_id=job_id)
+
+    try:
+        job = job_service.get_job_or_raise(job_id)
+    except JobNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error_code": "JOB_NOT_FOUND",
+                "message": f"Job not found: {job_id}",
+            },
+        )
+
+    if job.status != JobStatus.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error_code": "JOB_NOT_COMPLETED",
+                "message": "The download job has not completed yet.",
+            },
+        )
+
+    if not job.file_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error_code": "FILE_NOT_FOUND",
+                "message": "No file is associated with this job.",
+            },
+        )
+
+    file_path = Path(job.file_path)
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error_code": "FILE_NOT_FOUND",
+                "message": "Downloaded file no longer exists.",
+            },
+        )
+
+    logger.info(
+        "job_file_served",
+        job_id=job_id,
+        file_path=str(file_path),
+    )
+
+    return FileResponse(
+        path=str(file_path),
+        filename=file_path.name,
+        media_type="application/octet-stream",
+    )
