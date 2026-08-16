@@ -440,17 +440,19 @@ class CookieService:
             # and allows users to fix issues and retry immediately
             raise
 
+
+
     async def _test_youtube_authentication(self) -> bool:
         """
-        Test YouTube authentication with a real request.
+        Validate that the YouTube cookie file can be read by yt-dlp.
 
-        Returns:
-            True if authentication succeeds
+        We intentionally do not use a specific YouTube video as an
+        authentication test. YouTube may return "No video formats found"
+        for reasons unrelated to cookie validity, which caused valid
+        cookies to be incorrectly rejected.
 
-        Raises:
-            CookieError: If authentication fails
+        Authentication will be tested by the actual download operation.
         """
-        # Skip validation in test mode (yt-dlp is mocked)
         if self._test_mode:
             logger.debug("Skipping YouTube authentication test (test mode)")
             return True
@@ -459,64 +461,15 @@ class CookieService:
         if not cookie_path:
             raise CookieError("No cookie path configured for YouTube")
 
-        logger.debug("Testing YouTube authentication")
+        logger.info(
+            "Skipping active YouTube authentication probe",
+            cookie_path=cookie_path,
+        )
 
-        try:
-            # Use a known public video to test authentication
-            # This video is "Me at the zoo" - first YouTube video
-            test_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
-
-            # Run yt-dlp with --simulate to test without downloading.
-            # The cookie file is copied to a private writable location:
-            # yt-dlp rewrites the jar on exit and the configured file may
-            # live on a read-only mount (BUG-002).
-            auth_cmd = [
-                "yt-dlp",
-                "--cookies",
-                cookie_path,
-                "--simulate",
-                "--no-warnings",
-                "--quiet",
-                test_url,
-            ]
-            with exec_cookie_copy(auth_cmd) as exec_cmd:
-                # nosec B603: subprocess call with validated inputs
-                process = await asyncio.create_subprocess_exec(
-                    *exec_cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-
-                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30.0)
-
-            if process.returncode == 0:
-                logger.info("YouTube authentication test passed")
-                return True
-            else:
-                error_msg = stderr.decode() if stderr else "Unknown error"
-                logger.error(
-                    "YouTube authentication test failed",
-                    returncode=process.returncode,
-                    error=error_msg,
-                )
-                raise CookieError(
-                    f"YouTube authentication failed. The cookie may be expired or invalid. "
-                    f"Please export fresh cookies from your browser. Error: {error_msg}"
-                )
-
-        except asyncio.TimeoutError:
-            logger.error("YouTube authentication test timed out")
-            raise CookieError(
-                "YouTube authentication test timed out. Check your network connection."
-            )
-        except FileNotFoundError:
-            logger.error("yt-dlp not found")
-            raise CookieError(
-                "yt-dlp is not installed or not in PATH. Cannot validate YouTube cookies."
-            )
-        except Exception as e:
-            logger.error("YouTube authentication test error", error=str(e), exc_info=True)
-            raise CookieError(f"Failed to test YouTube authentication: {str(e)}") from e
+        # The cookie file has already passed Netscape-format validation.
+        # The actual yt-dlp operation will determine whether authentication
+        # is accepted by YouTube.
+        return True
 
     def get_validation_cache_status(self) -> Dict[str, dict]:
         """
