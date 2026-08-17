@@ -179,5 +179,8 @@ async def download_job_file(
     return FileResponse(
         path=str(file_path),
         filename=file_path.name,
-        media_type="application/octet-stream",
+        media_type="audio/mpeg",
+        headers={
+            "Content-Disposition": f'attachment; filename="{file_path.name}"'
+        },
     )
